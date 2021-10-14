@@ -22,15 +22,21 @@ import com.redislabs.lettusearch.StatefulRediSearchConnection;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 
 import io.lettuce.core.RedisCommandExecutionException;
 
 @Component
+@Configuration
+
 public class BankTransactionGenerator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BankTransactionGenerator.class);
@@ -52,23 +58,26 @@ public class BankTransactionGenerator {
     private final TimeSeriesCommands tsc;
     private Environment env;
 
-    private @Value("${spring.redis.user}")
-    String redisUser;
-
     public BankTransactionGenerator(StringRedisTemplate redis, StatefulRediSearchConnection<String, String> connection,
-            TimeSeriesCommands tsc) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+            TimeSeriesCommands tsc, Environment envIn) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         this.redis = redis;
         this.connection = connection;
         this.tsc = tsc;
+        this.env = envIn;
         transactionSources = SerializationUtil.loadObjectList(TransactionSource.class, "/transaction_sources.csv");
         random = SecureRandom.getInstance("SHA1PRNG");
-        random.setSeed(redisUser.getBytes("UTF-8")); // Prime the RNG so it always generates the same pseudorandom set
+        random.setSeed(envIn.getProperty("spring.redis.user").getBytes("UTF-8")); // Prime the RNG so it always generates the same pseudorandom set
 
         createSearchIndices();
         deleteSortedSet();
         createTimeSeries();
         createInitialStream();
 
+    }
+
+    @Bean
+    public static PropertySourcesPlaceholderConfigurer propertyPlaceHolderConfigurer() {
+        return new PropertySourcesPlaceholderConfigurer();
     }
 
     @SuppressWarnings("unchecked")
@@ -101,7 +110,7 @@ public class BankTransactionGenerator {
     private void createTimeSeries() {
         redis.delete(BALANCE_TS);
         tsc.create(BALANCE_TS, 0);
-        LOGGER.info("Created {} time seris", BALANCE_TS);
+        LOGGER.info("Created {} time series", BALANCE_TS);
     }
 
     private void createInitialStream() {
@@ -135,8 +144,8 @@ public class BankTransactionGenerator {
     private BankTransaction createBankTransaction() {
         BankTransaction transaction = new BankTransaction();
         transaction.setId(random.nextLong());
-        transaction.setToAccountName(redisUser);
-        transaction.setToAccount(Utilities.generateFakeIbanFrom(redisUser));
+        transaction.setToAccountName(env.getProperty("spring.redis.user"));
+        transaction.setToAccount(Utilities.generateFakeIbanFrom(env.getProperty("spring.redis.user")));
         TransactionSource ts = transactionSources.get(random.nextInt(transactionSources.size()));
         transaction.setFromAccountName(ts.getFromAccountName());
         transaction.setFromAccount(Utilities.generateFakeIbanFrom(ts.getFromAccountName()));
