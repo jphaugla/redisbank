@@ -1,12 +1,24 @@
 package com.redislabs.demos.redisbank;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
+    @Autowired
+
+    private Environment env;
+
+    private @Value("${spring.redis.user}")
+    String redisUser;
+
+    private @Value("${spring.redis.password}")
+    String redisPassword;
 
     @Override
     public void configure(HttpSecurity http) throws Exception {
@@ -28,8 +40,8 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Override
     public void configure(AuthenticationManagerBuilder auth) throws Exception   {
         auth.inMemoryAuthentication()
-        .withUser("lars")
-        .password("{noop}larsje")
+        .withUser(redisUser)
+        .password(redisPassword)
         .roles("USER");
     }
 

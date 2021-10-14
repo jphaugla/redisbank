@@ -22,6 +22,8 @@ import com.redislabs.lettusearch.StatefulRediSearchConnection;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -48,6 +50,10 @@ public class BankTransactionGenerator {
     private final StringRedisTemplate redis;
     private final StatefulRediSearchConnection<String, String> connection;
     private final TimeSeriesCommands tsc;
+    private Environment env;
+
+    private @Value("${spring.redis.user}")
+    String redisUser;
 
     public BankTransactionGenerator(StringRedisTemplate redis, StatefulRediSearchConnection<String, String> connection,
             TimeSeriesCommands tsc) throws NoSuchAlgorithmException, UnsupportedEncodingException {
@@ -56,7 +62,7 @@ public class BankTransactionGenerator {
         this.tsc = tsc;
         transactionSources = SerializationUtil.loadObjectList(TransactionSource.class, "/transaction_sources.csv");
         random = SecureRandom.getInstance("SHA1PRNG");
-        random.setSeed("lars".getBytes("UTF-8")); // Prime the RNG so it always generates the same pseudorandom set
+        random.setSeed(redisUser.getBytes("UTF-8")); // Prime the RNG so it always generates the same pseudorandom set
 
         createSearchIndices();
         deleteSortedSet();
@@ -129,8 +135,8 @@ public class BankTransactionGenerator {
     private BankTransaction createBankTransaction() {
         BankTransaction transaction = new BankTransaction();
         transaction.setId(random.nextLong());
-        transaction.setToAccountName("lars");
-        transaction.setToAccount(Utilities.generateFakeIbanFrom("lars"));
+        transaction.setToAccountName(redisUser);
+        transaction.setToAccount(Utilities.generateFakeIbanFrom(redisUser));
         TransactionSource ts = transactionSources.get(random.nextInt(transactionSources.size()));
         transaction.setFromAccountName(ts.getFromAccountName());
         transaction.setFromAccount(Utilities.generateFakeIbanFrom(ts.getFromAccountName()));

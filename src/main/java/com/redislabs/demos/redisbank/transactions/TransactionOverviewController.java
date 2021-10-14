@@ -16,6 +16,8 @@ import com.redislabs.lettusearch.StatefulRediSearchConnection;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations.TypedTuple;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -40,6 +42,10 @@ public class TransactionOverviewController {
     private final StatefulRediSearchConnection<String, String> srsc;
     private final StringRedisTemplate redis;
     private final TimeSeriesCommands tsc;
+
+    private Environment env;
+    @Value("${spring.redis.user}")
+    private String redisUser;
 
     public TransactionOverviewController(Config config, StatefulRediSearchConnection<String, String> srsc,
             TimeSeriesCommands tsc, StringRedisTemplate redis) {
@@ -106,7 +112,7 @@ public class TransactionOverviewController {
     @GetMapping("/transactions")
     public SearchResults<String, String> listTransactions() {
         RediSearchCommands<String, String> commands = srsc.sync();
-        SearchResults<String, String> results = commands.search(ACCOUNT_INDEX, "lars");
+        SearchResults<String, String> results = commands.search(ACCOUNT_INDEX, redisUser);
         return results;
     }
 
