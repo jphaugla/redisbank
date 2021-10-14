@@ -1,7 +1,6 @@
 package com.redislabs.demos.redisbank;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -14,10 +13,10 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Autowired
     private Environment env;
     @Autowired
-    private @Value("{spring.redis.user}")
+    private @Value("{spring.security.user.name}")
     String redisUser;
     @Autowired
-    private @Value("{spring.redis.password}")
+    private @Value("{spring.security.user.password}")
     String redisPassword;
 
 
@@ -36,14 +35,6 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
         .defaultSuccessUrl("/index.html")
         .failureUrl("/auth-login.html?error=true");
 
-    }
-
-    @Override
-    public void configure(AuthenticationManagerBuilder auth) throws Exception   {
-        auth.inMemoryAuthentication()
-        .withUser("lars")
-        .password("{noop}larsje")
-        .roles("USER");
     }
 
 

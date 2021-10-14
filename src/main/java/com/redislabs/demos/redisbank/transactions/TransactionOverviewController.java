@@ -45,7 +45,7 @@ public class TransactionOverviewController {
     private final TimeSeriesCommands tsc;
 
     @Autowired
-    @Value("${spring.redis.user}")
+    @Value("${spring.security.user.name}")
     private String redisUser;
 
     public TransactionOverviewController(Config config, StatefulRediSearchConnection<String, String> srsc,

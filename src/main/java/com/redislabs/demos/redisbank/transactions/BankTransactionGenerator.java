@@ -66,7 +66,7 @@ public class BankTransactionGenerator {
         this.env = envIn;
         transactionSources = SerializationUtil.loadObjectList(TransactionSource.class, "/transaction_sources.csv");
         random = SecureRandom.getInstance("SHA1PRNG");
-        random.setSeed(envIn.getProperty("spring.redis.user").getBytes("UTF-8")); // Prime the RNG so it always generates the same pseudorandom set
+        random.setSeed(envIn.getProperty("spring.security.user.name").getBytes("UTF-8")); // Prime the RNG so it always generates the same pseudorandom set
 
         createSearchIndices();
         deleteSortedSet();
@@ -144,8 +144,8 @@ public class BankTransactionGenerator {
     private BankTransaction createBankTransaction() {
         BankTransaction transaction = new BankTransaction();
         transaction.setId(random.nextLong());
-        transaction.setToAccountName(env.getProperty("spring.redis.user"));
-        transaction.setToAccount(Utilities.generateFakeIbanFrom(env.getProperty("spring.redis.user")));
+        transaction.setToAccountName(env.getProperty("spring.security.user.name"));
+        transaction.setToAccount(Utilities.generateFakeIbanFrom(env.getProperty("spring.security.user.name")));
         TransactionSource ts = transactionSources.get(random.nextInt(transactionSources.size()));
         transaction.setFromAccountName(ts.getFromAccountName());
         transaction.setFromAccount(Utilities.generateFakeIbanFrom(ts.getFromAccountName()));
