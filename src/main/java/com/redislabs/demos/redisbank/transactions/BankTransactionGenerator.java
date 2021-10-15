@@ -38,7 +38,7 @@ import io.lettuce.core.RedisCommandExecutionException;
 public class BankTransactionGenerator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BankTransactionGenerator.class);
-    private static Double balance = 100000.00;
+    private static Double balance = 10000.00;
     private static final int TRANSACTION_RATE_MS = 10000;
     private static final String TRANSACTION_KEY = "transaction";
     private static final String TRANSACTIONS_STREAM = "transactions";
