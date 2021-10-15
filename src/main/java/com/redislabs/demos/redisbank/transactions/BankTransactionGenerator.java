@@ -6,6 +6,7 @@ import java.security.SecureRandom;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.time.Clock;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +15,6 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.redislabs.demos.redisbank.SerializationUtil;
 import com.redislabs.demos.redisbank.Utilities;
-import com.redislabs.demos.redisbank.timeseries.TimeSeriesCommands;
 import com.redislabs.lettusearch.Field;
 import com.redislabs.lettusearch.Field.Text.PhoneticMatcher;
 import com.redislabs.lettusearch.RediSearchCommands;
@@ -22,8 +22,6 @@ import com.redislabs.lettusearch.StatefulRediSearchConnection;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.Environment;
@@ -55,14 +53,12 @@ public class BankTransactionGenerator {
 
     private final StringRedisTemplate redis;
     private final StatefulRediSearchConnection<String, String> connection;
-    private final TimeSeriesCommands tsc;
     private Environment env;
 
     public BankTransactionGenerator(StringRedisTemplate redis, StatefulRediSearchConnection<String, String> connection,
-            TimeSeriesCommands tsc, Environment envIn) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+       Environment envIn) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         this.redis = redis;
         this.connection = connection;
-        this.tsc = tsc;
         this.env = envIn;
         transactionSources = SerializationUtil.loadObjectList(TransactionSource.class, "/transaction_sources.csv");
         random = SecureRandom.getInstance("SHA1PRNG");
@@ -70,7 +66,6 @@ public class BankTransactionGenerator {
 
         createSearchIndices();
         deleteSortedSet();
-        createTimeSeries();
         createInitialStream();
 
     }
@@ -105,12 +100,6 @@ public class BankTransactionGenerator {
         redis.delete(SORTED_SET_KEY);
         LOGGER.info("Deleted {} sorted set", SORTED_SET_KEY);
 
-    }
-
-    private void createTimeSeries() {
-        redis.delete(BALANCE_TS);
-        tsc.create(BALANCE_TS, 0);
-        LOGGER.info("Created {} time series", BALANCE_TS);
     }
 
     private void createInitialStream() {
@@ -167,7 +156,12 @@ public class BankTransactionGenerator {
         }
 
         balance = balance + roundedAmount;
-        tsc.add(BALANCE_TS, balance);
+        int balanceInt = balance.intValue();
+        String balanceString = Integer.toString(balanceInt);
+        int millis=Math.toIntExact(System.currentTimeMillis()/1000);
+        double millisDouble = millis;
+        redis.opsForZSet().add(BALANCE_TS, balanceString, millisDouble);
+        // redis.opsForZSet().add(BALANCE_TS, balance);
         redis.opsForZSet().incrementScore(SORTED_SET_KEY, accountName, roundedAmount * -1);
 
         return nf.format(roundedAmount);

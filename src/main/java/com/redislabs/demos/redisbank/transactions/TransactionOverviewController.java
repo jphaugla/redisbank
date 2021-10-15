@@ -6,7 +6,6 @@ import java.util.Set;
 
 import com.redislabs.demos.redisbank.Config;
 import com.redislabs.demos.redisbank.Config.StompConfig;
-import com.redislabs.demos.redisbank.timeseries.TimeSeriesCommands;
 import com.redislabs.lettusearch.RediSearchCommands;
 import com.redislabs.lettusearch.SearchOptions;
 import com.redislabs.lettusearch.SearchOptions.Highlight;
@@ -42,17 +41,15 @@ public class TransactionOverviewController {
     private final Config config;
     private final StatefulRediSearchConnection<String, String> srsc;
     private final StringRedisTemplate redis;
-    private final TimeSeriesCommands tsc;
 
     @Autowired
     @Value("${spring.security.user.name}")
     private String redisUser;
 
     public TransactionOverviewController(Config config, StatefulRediSearchConnection<String, String> srsc,
-            TimeSeriesCommands tsc, StringRedisTemplate redis) {
+             StringRedisTemplate redis) {
         this.config = config;
         this.srsc = srsc;
-        this.tsc = tsc;
         this.redis = redis;
     }
 
@@ -63,19 +60,25 @@ public class TransactionOverviewController {
 
     @GetMapping("/balance")
     public Balance[] balance() {
-        Map<String, String> tsValues = tsc.range(BALANCE_TS, System.currentTimeMillis() - (1000 * 60 * 60 * 24 * 7),
-                System.currentTimeMillis());
-        Balance[] balanceTs = new Balance[tsValues.size()];
-        int i = 0;
+        int startTime;
+        int endTime;
+        endTime=Math.toIntExact(System.currentTimeMillis()/1000);
+        startTime=endTime  - (60 * 60 * 24 * 7);
+        Set<TypedTuple<String>> range = redis.opsForZSet().rangeByScoreWithScores(BALANCE_TS, startTime, endTime);
 
-        for (Entry<String, String> entry : tsValues.entrySet()) {
-            Object keyString = entry.getKey();
-            Object valueString = entry.getValue();
-            balanceTs[i] = new Balance(keyString, valueString);
-            i++;
+        if (range.size() > 0) {
+            int i = 0;
+            Balance[] balanceTs = new Balance[range.size()];
+            for (TypedTuple<String> tuple : range) {
+                Object keyString = tuple.getScore();
+                Object valueString = tuple.getValue();
+                balanceTs[i] = new Balance(keyString, valueString);
+                i++;
+            }
+            return balanceTs;
+        } else {
+            return new Balance[0];
         }
-
-        return balanceTs;
     }
 
     @GetMapping("/biggestspenders")
